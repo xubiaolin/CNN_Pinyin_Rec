@@ -6,7 +6,7 @@ import random
 import os
 import json
 
-EPOCH = 300
+EPOCH = 150
 BATCH_SIZE = 100
 IMAGE_PATH = "Data/train/"
 
@@ -227,6 +227,8 @@ def train_code_cnn(image_paths, labels, flag='train'):
 def getSingleImageBatch(image_path):
     batch_x = np.zeros([1, IMAGE_HEIGHT * IMAGE_WIDTH])
     captcha_image = cv2.imread(image_path,0)
+    # kernel = np.ones((3, 3), np.uint8)
+    # dilation = cv2.dilate(captcha_image, kernel)  # 膨胀
     captcha_image=cv2.resize(captcha_image,(28,28))
     captcha_image = np.array(captcha_image)
     image = convert2gray(captcha_image)
@@ -239,6 +241,7 @@ def predict(image_path,isList=False):
     with tf.Session() as sess:
         saver.restore(sess, './model/image_model')
         if isList:
+            count=0
             for i in os.listdir(image_path):
                 v_xs = getSingleImageBatch(image_path+i)
                 y_pre = sess.run(prediction, feed_dict={xs: v_xs, keep_prob: 1})
@@ -253,11 +256,13 @@ def predict(image_path,isList=False):
                     dict = json.loads(f.read())
 
                 ans_=i.split('_')[0]
-
-                print('识别图片:{}'.format())
+                if str(index)==str(ans_):
+                    count+=1
+                print('识别图片:{}'.format(image_path+i))
                 print('预测的结果为:{}, 正确答案为:{}'.format(dict[str(index)],dict[str(ans_)]))
                 print('概率为:{}'.format(np.max(y_pre)))
-
+                print()
+            print('预测测试集的准确度:{}'.format(count/len(os.listdir(image_path))))
         else:
             v_xs=getSingleImageBatch(image_path)
             y_pre = sess.run(prediction, feed_dict={xs: v_xs, keep_prob: 1})
@@ -268,6 +273,7 @@ def predict(image_path,isList=False):
             print(index)
             pre.sort()
             print(pre[-1], pre[-2])
+            print(y_pre)
             with open('num_char.json', 'r') as f:
                 dict = json.loads(f.read())
             print('预测的结果为:'+dict[str(index)])
@@ -301,5 +307,6 @@ def main():
 
 if __name__ == '__main__':
 
-    predict('Data/test/',True)
-    # main()
+    # predict('Data/test/',True)
+    main()
+    predict('test.jpg',False)

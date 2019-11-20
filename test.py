@@ -3,6 +3,8 @@ import os
 import struct
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
+import copy
 
 CHAR_SET_LEN=26
 
@@ -46,6 +48,23 @@ def mnist_plot_img(img):
     plt.imshow(img);
     plt.show();
 
+
+def pengzhangtupian(img):
+    img=copy.deepcopy(img)
+    kernel = np.ones((3, 3), np.uint8)
+    erosion = cv2.erode(img, kernel)
+    return erosion
+
 if __name__ == '__main__':
-   imgs=mnist_load_img('emnist-balanced-train-images-idx3-ubyte.gz')
-   mnist_plot_img(imgs)
+   path='Data/originData/y/'
+   count=len(os.listdir(path))
+   pre=os.listdir(path)[0].split('_')[0]+'_'
+
+   for i in os.listdir(path):
+       img=cv2.imread(path+i,0)
+       img=pengzhangtupian(img)
+       dstName=path+pre+str(count)+'.jpg'
+       print(dstName)
+       cv2.imwrite(dstName,img)
+       count+=1
+

@@ -5,7 +5,8 @@ from PIL import Image
 import random
 import os
 import json
-
+import time
+from MakeData import cut
 EPOCH = 150
 BATCH_SIZE = 100
 IMAGE_PATH = "Data/train/"
@@ -14,9 +15,9 @@ IMAGE_MUMBER = len(os.listdir(IMAGE_PATH))
 
 IMAGE_HEIGHT = 28
 IMAGE_WIDTH = 28
-CHAR_SET_LEN = 26  # 数字大小,后期要修改
+CHAR_SET_LEN = 30  # 数字大小,后期要修改
 xs = tf.placeholder(tf.float32, [None, IMAGE_HEIGHT * IMAGE_WIDTH])
-ys = tf.placeholder(tf.float32, [None, 26])
+ys = tf.placeholder(tf.float32, [None, CHAR_SET_LEN])
 keep_prob = tf.placeholder(tf.float32)  # 防止过拟合
 x_image = tf.reshape(xs, [-1, IMAGE_HEIGHT, IMAGE_WIDTH, 1])
 
@@ -65,8 +66,8 @@ def code_cnn():
     h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
     h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)  # 防止过度拟合
     # 第四层全连接层
-    W_fc2 = weigth_variable([1024, 26])
-    b_fc2 = bias_varibale([26])
+    W_fc2 = weigth_variable([1024, CHAR_SET_LEN])
+    b_fc2 = bias_varibale([CHAR_SET_LEN])
     prediction = tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
     return prediction
 
@@ -113,13 +114,13 @@ def text2vec(text):
     # print("输入的text:{}".format(text))
     text_len = len(text)
     vector = np.zeros(1 * CHAR_SET_LEN)
-    vector[int(text)-1]=1
+    vector[int(text) - 1] = 1
     return vector
 
 
 def get_next_batch(batch_size, each, images, labels):
     batch_x = np.zeros([batch_size, IMAGE_HEIGHT * IMAGE_WIDTH])
-    batch_y = np.zeros([batch_size, 26])
+    batch_y = np.zeros([batch_size, CHAR_SET_LEN])
 
     def get_text_and_image(i, each):
         image_num = each * batch_size + i
@@ -221,65 +222,112 @@ def train_code_cnn(image_paths, labels, flag='train'):
             batch_x_test, batch_y_test = get_random_batch(BATCH_SIZE, test_image_paths, test_labels)
 
             accuracy_test = compute_accuracy(batch_x_test, batch_y_test, sess)
-            print("测试样本测试 epoch: %d  acc: %f" % ( 1, accuracy_test))
+            print("测试样本测试 epoch: %d  acc: %f" % (1, accuracy_test))
+
 
 # 获取预测值
 def getSingleImageBatch(image_path):
     batch_x = np.zeros([1, IMAGE_HEIGHT * IMAGE_WIDTH])
-    captcha_image = cv2.imread(image_path,0)
+    captcha_image = cv2.imread(image_path, 0)
+    captcha_image=dealwithimg(captcha_image)
     # kernel = np.ones((3, 3), np.uint8)
     # dilation = cv2.dilate(captcha_image, kernel)  # 膨胀
-    captcha_image=cv2.resize(captcha_image,(28,28))
+    captcha_image = cv2.resize(captcha_image, (28, 28))
     captcha_image = np.array(captcha_image)
     image = convert2gray(captcha_image)
     batch_x[0, :] = image.flatten() / 255  # (image.flatten()-128)/128  mean为0
     return batch_x
 
 
-def predict(image_path,isList=False):
+
+
+
+
+def predict(image_path, isList=False):
     global prediction
     with tf.Session() as sess:
         saver.restore(sess, './model/image_model')
         if isList:
-            count=0
+            count = 0
             for i in os.listdir(image_path):
-                v_xs = getSingleImageBatch(image_path+i)
+                v_xs = getSingleImageBatch(image_path + i)
                 y_pre = sess.run(prediction, feed_dict={xs: v_xs, keep_prob: 1})
                 pre = y_pre[0]
 
                 index = np.where(y_pre == np.max(y_pre))
-                index = index[1][0] + 1
-
+                index = index[1][0] + 1  # 概率最大的下标
+                # print(index)
                 pre.sort()
+                # print(pre[-1], pre[-2])
+                itemindex = np.argwhere(y_pre == pre[-2])
+                itemindex = itemindex[0][1] + 1
 
                 with open('num_char.json', 'r') as f:
                     dict = json.loads(f.read())
 
-                ans_=i.split('_')[0]
-                if str(index)==str(ans_):
-                    count+=1
-                print('识别图片:{}'.format(image_path+i))
-                print('预测的结果为:{}, 正确答案为:{}'.format(dict[str(index)],dict[str(ans_)]))
-                print('概率为:{}'.format(np.max(y_pre)))
-                print()
-            print('预测测试集的准确度:{}'.format(count/len(os.listdir(image_path))))
-        else:
-            v_xs=getSingleImageBatch(image_path)
-            y_pre = sess.run(prediction, feed_dict={xs: v_xs, keep_prob: 1})
-            pre=y_pre[0]
 
-            index=np.where(y_pre==np.max(y_pre))
-            index=index[1][0]+1
+                print('识别图片:{}'.format(image_path + i))
+                print('预测的结果为:' + dict[str(index)], '概率为:{}'.format(np.max(y_pre)))
+                print('预测的结果为:' + dict[str(itemindex)], '概率为:' + str(pre[-2]))
+                print()
+        else:
+            v_xs = getSingleImageBatch(image_path)
+            y_pre = sess.run(prediction, feed_dict={xs: v_xs, keep_prob: 1})
+            pre = y_pre[0]
+
+            index = np.where(y_pre == np.max(y_pre))
+            index = index[1][0] + 1  # 概率最大的下标
             print(index)
             pre.sort()
             print(pre[-1], pre[-2])
-            print(y_pre)
+            itemindex = np.argwhere(y_pre == pre[-2])
+            itemindex = itemindex[0][1] + 1
+
             with open('num_char.json', 'r') as f:
                 dict = json.loads(f.read())
-            print('预测的结果为:'+dict[str(index)])
-            print('概率为:{}'.format(np.max(y_pre)))
+            print('预测的结果为:' + dict[str(index)], '概率为:{}'.format(np.max(y_pre)))
+            print('预测的结果为:' + dict[str(itemindex)],'概率为:'+str(pre[-2]))
 
 
+def predictForServer(imglist):
+    global prediction
+
+    def getSingleImageBatch(image):
+        batch_x = np.zeros([1, IMAGE_HEIGHT * IMAGE_WIDTH])
+        captcha_image = image
+        captcha_image = dealwithimg(captcha_image)
+        # kernel = np.ones((3, 3), np.uint8)
+        # dilation = cv2.dilate(captcha_image, kernel)  # 膨胀
+        captcha_image = cv2.resize(captcha_image, (28, 28))
+
+        captcha_image = np.array(captcha_image)
+        image = convert2gray(captcha_image)
+        batch_x[0, :] = image.flatten() / 255  # (image.flatten()-128)/128  mean为0
+        return batch_x
+
+    with tf.Session() as sess:
+        saver.restore(sess, './model/image_model')
+        count = 0
+        list=[]
+        for i in imglist:
+            v_xs=getSingleImageBatch(i)
+            y_pre = sess.run(prediction, feed_dict={xs: v_xs, keep_prob: 1})
+            pre = y_pre[0]
+
+            index = np.where(y_pre == np.max(y_pre))
+            index = index[1][0] + 1  # 概率最大的下标
+            # print(index)
+            pre.sort()
+            # print(pre[-1], pre[-2])
+            itemindex = np.argwhere(y_pre == pre[-2])
+            itemindex = itemindex[0][1] + 1
+
+            with open('num_char.json', 'r') as f:
+                dict = json.loads(f.read())
+
+            list.append(dict[str(index)])
+
+        return list
 
 # 根据路径得到文本的内容
 def getStrContent(path):
@@ -302,11 +350,20 @@ def get_image_path_labels(IMAGE_PATH=IMAGE_PATH):
 def main():
     # 得到训练样本路径list和标签的list
     image_paths, labels = get_image_path_labels()
-    train_code_cnn(image_paths, labels,'train')
+    train_code_cnn(image_paths, labels, 'train')
 
+
+def dealwithimg(img):
+    x1, x2, y1, y2 = cut(img)
+
+    print(x1, x2, y1, y2)
+    temp = img[y1:y2, x1:x2]
+    temp = cv2.resize(temp, (28, 28))
+    return temp
 
 if __name__ == '__main__':
-
     # predict('Data/test/',True)
-    main()
-    predict('test.jpg',False)
+    #main()
+    #predict('data/test/30_17.jpg', False)
+    predict('cuttedPinYin/1.jpg',False)
+    #predict('C:\\Users\\MarkXu\\Desktop\\test/',True)

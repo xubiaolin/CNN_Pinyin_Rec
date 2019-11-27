@@ -7,7 +7,8 @@ import os
 import json
 import time
 from MakeData import cut
-EPOCH = 150
+from MakeData import resize
+EPOCH = 120
 BATCH_SIZE = 100
 IMAGE_PATH = "Data/train/"
 
@@ -15,7 +16,7 @@ IMAGE_MUMBER = len(os.listdir(IMAGE_PATH))
 
 IMAGE_HEIGHT = 28
 IMAGE_WIDTH = 28
-CHAR_SET_LEN = 30  # 数字大小,后期要修改
+CHAR_SET_LEN = 50  # 数字大小,后期要修改
 xs = tf.placeholder(tf.float32, [None, IMAGE_HEIGHT * IMAGE_WIDTH])
 ys = tf.placeholder(tf.float32, [None, CHAR_SET_LEN])
 keep_prob = tf.placeholder(tf.float32)  # 防止过拟合
@@ -296,8 +297,7 @@ def predictForServer(imglist):
         batch_x = np.zeros([1, IMAGE_HEIGHT * IMAGE_WIDTH])
         captcha_image = image
         captcha_image = dealwithimg(captcha_image)
-        # kernel = np.ones((3, 3), np.uint8)
-        # dilation = cv2.dilate(captcha_image, kernel)  # 膨胀
+
         captcha_image = cv2.resize(captcha_image, (28, 28))
 
         captcha_image = np.array(captcha_image)
@@ -349,21 +349,27 @@ def get_image_path_labels(IMAGE_PATH=IMAGE_PATH):
 
 def main():
     # 得到训练样本路径list和标签的list
+
     image_paths, labels = get_image_path_labels()
     train_code_cnn(image_paths, labels, 'train')
 
 
 def dealwithimg(img):
+    width,height=img.shape
+    if width==height:
+        return img
     x1, x2, y1, y2 = cut(img)
 
-    print(x1, x2, y1, y2)
+    # print(x1, x2, y1, y2)
     temp = img[y1:y2, x1:x2]
-    temp = cv2.resize(temp, (28, 28))
+    temp=resize(temp)
     return temp
 
 if __name__ == '__main__':
     # predict('Data/test/',True)
-    #main()
+    main()
     #predict('data/test/30_17.jpg', False)
-    predict('cuttedPinYin/1.jpg',False)
-    #predict('C:\\Users\\MarkXu\\Desktop\\test/',True)
+    #predict('cuttedPinYin/1.jpg',False)
+    path='C:\\Users\\MarkXu\\Desktop\\wrong\\'
+    predict(path,True)
+

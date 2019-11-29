@@ -18,10 +18,11 @@ def index():
 @app.route('/judge/word', methods=['POST'])
 def getpic():
     uploadFile = request.files['img']
+    username=request.form['username']
     fileName = str(uploadFile.filename)
     # print('单字的名称:' + fileName)
     uuidstr = str(uuid.uuid4()).replace('-', '')
-    fileName = uuidstr + fileName[fileName.find('.'):]
+    fileName = username+'_'+uuidstr + fileName[fileName.find('.'):]
     dstPath = filePath + fileName
     # print(dstPath)
     uploadFile.save(dstPath)
@@ -67,4 +68,4 @@ def judgePinyin():
 
 
 if __name__ == '__main__':
-    app.run(port=5001)
+    app.run(port=4999)

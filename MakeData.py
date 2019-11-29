@@ -94,7 +94,11 @@ def makeOringinData(path):
         for i in dirlist:
             img = cv2.imread(imgPath + i, 0)
             temp=img
-            width,height=img.shape
+            print(i)
+            try:
+                width,height=img.shape
+            except:
+                continue
             if not width==height:
                 x1, x2, y1, y2 = cut(img)
                 if x1 == x2 or y1 == y2:
